@@ -1,0 +1,15 @@
+Realistic avatar data in this folder (mh.bin, mh.json, tex/*)
+
+Source: MakeHuman base mesh, morph targets, proxies (hair, eyebrows, eyelashes, eyes,
+shoes) and skin textures, as distributed in the "makehuman-data" npm package, created by
+the MakeHuman team (Manuel Bastioni, Jonas Hauquier, Thomas Larsson and contributors).
+
+Licence: CC0 1.0 Universal. In September 2020 the MakeHuman project relicensed its
+bundled assets (base mesh, targets, proxies, skins) as CC0, whatever way they were
+obtained; the older "AGPL3" strings inside the original files predate that change.
+  https://static.makehumancommunity.org/oldsite/faq/what_changed_regarding_the_license_in_2020.html
+  https://static.makehumancommunity.org/makehuman/faq/are_makehuman_files_free.html
+
+Only assets made by the MakeHuman team are included. Community assets with other
+licences were left out. FitMate converted the files (sparse targets, resized textures,
+grey hair textures for tinting, whitened eye sclera) with tools/pack_mh.py.
