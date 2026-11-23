@@ -311,7 +311,7 @@ pre{overflow-x:auto;background:var(--panel2);padding:14px;border-radius:12px;fon
 <!-- PHOTO TRY-ON -->
 <section class="view" id="v-photo"><div class="band"><div class="wrap">
 <h2>Photo Try-On</h2>
-<p class="muted" style="max-width:720px">See a garment on your real photo. The overlay preview is instant and stays in your browser; the AI try-on uses the FitMate backend and the IDM-VTON model.</p>
+<p class="muted" style="max-width:720px">See a garment on a photo. The garment is rendered in 3D in your recommended size and placed on your photo or on your own avatar; it stays in your browser. With the FitMate backend connected, the AI try-on (IDM-VTON) generates the image from your photo.</p>
 <div class="split" style="margin-top:16px">
 <div class="left">
 <div class="stage" id="stage"></div>
@@ -320,8 +320,8 @@ pre{overflow-x:auto;background:var(--panel2);padding:14px;border-radius:12px;fon
 </div>
 <div>
 <div class="step"><h3><span class="n">1</span>Your photo</h3>
-<p class="muted small">Front-facing, full body, plain background. You’ll be asked for consent first.</p>
-<div class="row"><label class="btn pri" for="personFile">Upload photo</label><input type="file" id="personFile" accept="image/*" hidden><button class="btn ghost" data-act="sample">Use sample mannequin</button><button class="btn ghost" data-act="delPhoto" id="delPhoto">Delete my photo</button></div>
+<p class="muted small">Front-facing, full body, plain background, the person filling the height of the photo. You’ll be asked for consent first. Without a photo, your own 3D avatar is the model.</p>
+<div class="row"><label class="btn pri" for="personFile">Upload photo</label><input type="file" id="personFile" accept="image/*" hidden><button class="btn ghost" data-act="sample">Use my avatar as model</button><button class="btn ghost" data-act="delPhoto" id="delPhoto">Delete my photo</button></div>
 </div>
 <div class="step"><h3><span class="n">2</span>Garment</h3>
 <label class="f">From the wardrobe<select id="phProduct"></select></label>
@@ -329,14 +329,14 @@ pre{overflow-x:auto;background:var(--panel2);padding:14px;border-radius:12px;fon
 <div class="row" style="margin-top:12px"><label class="btn ghost" for="garmFile">Upload my own garment</label><input type="file" id="garmFile" accept="image/*" hidden><button class="btn ghost" data-act="clearGarm" id="clearGarm" hidden>Use wardrobe garment</button></div>
 </div>
 <div class="step"><h3><span class="n">3</span>Adjust the overlay</h3>
-<label class="f">Size on photo<input type="range" id="ovScale" min="20" max="110" step="1"></label>
+<label class="f">Size on photo<input type="range" id="ovScale" min="10" max="110" step="1"></label>
 <label class="f" style="margin-top:8px">Opacity<input type="range" id="ovOp" min="40" max="100" step="1" value="100"></label>
 </div>
 <div class="step"><h3><span class="n">4</span>AI try-on</h3>
-<p class="muted small">Sends your photo and the garment to the FitMate backend, which runs IDM-VTON on a GPU and returns a generated image. Photos are deleted after processing.</p>
+<p class="muted small">With a FitMate backend URL, your photo and the garment go to IDM-VTON on a GPU and come back as a generated image; photos are deleted after processing. Without one, you get a 3D try-on of your avatar.</p>
 <label class="f">FitMate backend URL<input id="backendUrl" type="url" placeholder="http://localhost:8000" autocomplete="off"></label>
-<div class="row" style="margin-top:10px"><button class="btn ink" data-act="runAI" id="aiBtn">Generate AI try-on</button></div>
-<div class="status" id="aiStatus" style="margin-top:10px">No backend connected. The overlay preview still works.</div>
+<div class="row" style="margin-top:10px"><button class="btn ink" data-act="runAI" id="aiBtn">Generate 3D try-on</button></div>
+<div class="status" id="aiStatus" style="margin-top:10px"></div>
 <div class="aires" id="aiRes" style="margin-top:10px" hidden></div>
 </div>
 </div>
@@ -906,8 +906,9 @@ for(let v=0;v<NV;v++){const l=Math.hypot(N[v*3],N[v*3+1],N[v*3+2])||1;N[v*3]/=l;
 function fitProxy(px,V){const n=px.nv,O=new Float32Array(n*3),r=px.ref,w=px.w,f=px.off;for(let i=0;i<n;i++)for(let c=0;c<3;c++){let s=f[i*3+c];for(let j=0;j<3;j++)s+=w[i*3+j]*V[r[i*3+j]*3+c];O[i*3+c]=s}return O}
 function geoFrom(P,vi,uv,tri,xf){const n=vi.length,pos=new Float32Array(n*3);for(let k=0;k<n;k++){const v=vi[k];xf(P,v,pos,k)}
 const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(pos,3));g.setAttribute('uv',new T.BufferAttribute(uv,2));g.setIndex(new T.BufferAttribute(tri,1));return g}
-function tex(path,srgb=true){const k=path;if(TXC[k])return TXC[k];const t=new T.TextureLoader().load(D.url+path,()=>{MH.onTex&&MH.onTex()});if(srgb)t.encoding=T.sRGBEncoding;t.anisotropy=4;TXC[k]=t;return t}
-return {load,get ready(){return !!D},get D(){return D},morph,macroW,solve,measure,pose,vnormals,fitProxy,geoFrom,tex,amean,NV,onTex:null}})();
+let PEND=0;const TW=[];const texDone=()=>{if(--PEND<=0){PEND=0;TW.splice(0).forEach(f=>{try{f()}catch(e){}})}};
+function tex(path,srgb=true){const k=path;if(TXC[k])return TXC[k];PEND++;const t=new T.TextureLoader().load(D.url+path,()=>{texDone();MH.onTex&&MH.onTex()},undefined,texDone);if(srgb)t.encoding=T.sRGBEncoding;t.anisotropy=4;TXC[k]=t;return t}
+return {load,get ready(){return !!D},get texPending(){return PEND},whenTex(f){if(PEND<=0)f();else TW.push(f)},get D(){return D},morph,macroW,solve,measure,pose,vnormals,fitProxy,geoFrom,tex,amean,NV,onTex:null}})();
 
 const A3=(()=>{
 if(!window.THREE||!THREE.OrbitControls)return null;
@@ -1337,7 +1338,8 @@ if(neck==='square'){return an<.62?1:Math.max(0,1-(an-.62)/.14)}return Math.pow(M
 function uvT(L,S){return (v,x,y,z)=>{if(L.isArm(v)){const sg=x>=0?1:-1,c=segClosest(L.arm[sg],[x,y,z]);const a=Math.atan2(z-c.q[2],(x-c.q[0])*sg);return [a*5/14,y/14]}
 if(L.isLeg(v)){const sg=x>=0?1:-1,c=segClosest(L.leg[sg],[x,y,z]);const a=Math.atan2(z-c.q[2],(x-c.q[0])*sg);return [a*8/14+sg*3,y/14]}
 const c=S?czAt(S,y):0;return [Math.atan2(x,z-c)*22/14,y/14]}}
-function garmentH(L,G,it,prof,flags,role){const p=it.p,size=it.size,hex=(p.colors[it.ci]||p.colors[0]).hex,Hh=L.Hh,Y=L.Y,D=L.D,P=Hh.P,H=Hh.H,NV=MH.NV;
+function garmentH(L,G,it,prof,flags,role){const c0=G.children.length,r0=garmentH0(L,G,it,prof,flags,role);for(let i=c0;i<G.children.length;i++)G.children[i].userData.pid=it.p.id;return r0}
+function garmentH0(L,G,it,prof,flags,role){const p=it.p,size=it.size,hex=(p.colors[it.ci]||p.colors[0]).hex,Hh=L.Hh,Y=L.Y,D=L.D,P=Hh.P,H=Hh.H,NV=MH.NV;
 const kind=p.kind,upper=kind!=='bottom',over=kind==='outer',dress=kind==='dress',ovs=p.cut==='oversized',slim=p.cut==='slim';
 const fit=gFit(p,size,prof,L),M=clothMat(p,hex),Bc={Y,H},tint=tintFn(flags,Bc,kind),layer=L.items.length,gap=.32+layer*.42+(over?.35:0);
 const res={p,kind};let F=new Float32Array(NV).fill(-10),S,Gp,hemY,coneO=null;
@@ -1496,9 +1498,25 @@ ctl.update();R.render(scene,cam);placeLabels()};raf=requestAnimationFrame(step)}
 function view(v){ctl.autoRotate=v==='spin';if(v==='spin')return;if((v==='face'||v==='bust')&&cur){const bu=v==='bust',hy=cur.B.top-(cur.B.head||24)*(bu?.95:.5),tn=Math.tan(cam.fov*Math.PI/360),d=(bu?29:17)/tn;ctl.target.set(0,hy,0);cam.position.set(Math.sin(.18)*d,hy+d*.04,Math.cos(.18)*d);ctl.minDistance=d*.6;ctl.maxDistance=d*6;cam.updateProjectionMatrix();ctl.update();return}const a={front:0,side:Math.PI/2,back:Math.PI,three:.32}[v]||0;az=a;frame(false)}
 function snapshot(w,h,bg){const cw=R.domElement.width,ch=R.domElement.height;R.render(scene,cam);const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');
 if(bg){const g=x.createLinearGradient(0,0,0,h);g.addColorStop(0,bg[0]);g.addColorStop(1,bg[1]);x.fillStyle=g;x.fillRect(0,0,w,h)}const s=Math.min(w/cw,h/ch);x.drawImage(R.domElement,(w-cw*s)/2,(h-ch*s)/2,cw*s,ch*s);return c}
+
+/* ---------- Photo Try-On renders: the avatar, the avatar wearing a garment, and the garment alone (body as an invisible occluder) ---------- */
+function alphaBox(c){const w=c.width,h=c.height,d=c.getContext('2d').getImageData(0,0,w,h).data;let x0=w,y0=h,x1=-1,y1=-1;for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(d[(y*w+x)*4+3]>12){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+if(x1<0)return null;x0=Math.max(0,x0-3);y0=Math.max(0,y0-3);x1=Math.min(w-1,x1+3);y1=Math.min(h-1,y1+3);return {x:x0,y:y0,w:x1-x0+1,h:y1-y0+1}}
+function photo(prof,item,o={}){const W=o.w||600,H=o.h||800,real=!!(MH&&MH.ready&&!NOMH);const outfit={};let p=null;if(item&&P(item.pid)){p=P(item.pid);outfit[p.kind]={pid:item.pid,ci:item.ci||0,size:item.size}}
+const bp=buildGroup(prof,{}),bg=p?buildGroup(prof,outfit):null,Ht=Math.max(bp.B.top,bg?bg.B.top:0)+3;
+const c2=new T.PerspectiveCamera(16,W/H,10,6000),half=Ht*.53,d=half/Math.tan(8*Math.PI/180);c2.position.set(0,Ht*.5,d);c2.lookAt(0,Ht*.5,0);c2.updateProjectionMatrix();
+const sz=R.getSize(new T.Vector2()),pr0=R.getPixelRatio(),cc=R.getClearColor(new T.Color()),ca=R.getClearAlpha();if(cur)cur.G.visible=false;
+R.setPixelRatio(1);R.setSize(W,H,false);R.setClearColor(0x000000,0);lightsFor(real);
+const snap=()=>{R.render(scene,c2);const c=document.createElement('canvas');c.width=W;c.height=H;c.getContext('2d').drawImage(R.domElement,0,0,W,H);return c};
+let person,full=null,garm=null,box=null;try{scene.add(bp.G);person=snap();scene.remove(bp.G);
+if(bg){scene.add(bg.G);full=snap();const hid=[],sw=[];scene.children.forEach(c=>{if(c!==bg.G&&c.isMesh&&c.visible){c.visible=false;hid.push(c)}});
+bg.G.traverse(m=>{if(!m.isMesh||m.userData.pid===p.id)return;const mm=m.material;if(mm.transparent&&!mm.alphaTest){m.visible=false;sw.push([m,mm,null]);return}const oc=mm.clone();oc.colorWrite=false;oc.transparent=false;m.material=oc;sw.push([m,mm,oc])});
+garm=snap();sw.forEach(([m,mm,oc])=>{if(oc){m.material=mm;oc.dispose()}else m.visible=true});hid.forEach(c=>c.visible=true);scene.remove(bg.G);box=alphaBox(garm)}}
+finally{dispose(bp);if(bg)dispose(bg);if(cur)cur.G.visible=true;R.setPixelRatio(pr0);R.setSize(sz.x,sz.y,false);R.setClearColor(cc,ca);lightsFor(!!(cur&&cur.B.real))}
+const ff=y=>(Ht*.5+half-y)/(2*half);return {person,full,garm,box,W,H,real,texPending:real?MH.texPending:0,topF:ff(Math.max(bp.B.top,bg?bg.B.top:0)),botF:ff(0)}}
 function test(prof,outfit){const o=buildGroup(prof,outfit);let bad=0,verts=0;o.G.traverse(m=>{if(m.geometry){const a=m.geometry.attributes.position.array;verts+=a.length/3;for(let i=0;i<a.length;i++)if(!isFinite(a[i])){bad++;break}}});dispose(o);return {ok:!bad,verts}}
 const RL=[];let MHF=!MH;if(MH&&!NOMH)MH.load('assets/mh/').then(()=>{keyStr='';if(LAST&&host)show(...LAST);RL.forEach(f=>{try{f()}catch(e){}})}).catch(e=>{MHF=true;console.warn('Realistic avatar assets unavailable; using the simple 3D body',e)});
-return {mount,show,view,snapshot,test,onReal:f=>RL.push(f),_h:{human,gctx,garmentH,buildGroupH,headH,slices,drape,scene,get cur(){return cur}},get real(){return !!(MH&&MH.ready&&!NOMH)},get failed(){return MHF},get anchors(){return cur?cur.anchors:[]}}})();
+return {mount,show,view,snapshot,test,photo,onReal:f=>RL.push(f),_h:{human,gctx,garmentH,buildGroupH,headH,slices,drape,scene,get cur(){return cur}},get real(){return !!(MH&&MH.ready&&!NOMH)},get failed(){return MHF},get anchors(){return cur?cur.anchors:[]}}})();
 
 const BGS=[['Studio','linear-gradient(180deg,#F4EFE9,#DCD2C6)',['#F4EFE9','#DCD2C6']],['Blush','linear-gradient(165deg,#FBE4DD,#EDB0A2)',['#FBE4DD','#EDB0A2']],['Lilac','linear-gradient(165deg,#F2EEFB,#C9BCE8)',['#F2EEFB','#C9BCE8']],['Mint','linear-gradient(170deg,#E7F5EF,#B5DCCA)',['#E7F5EF','#B5DCCA']],['Coral','linear-gradient(165deg,#F8B08E,#E2683C)',['#F8B08E','#E2683C']],['Sky','linear-gradient(170deg,#E4F0FB,#A9C8EA)',['#E4F0FB','#A9C8EA']],['Night','linear-gradient(180deg,#2D2A44,#121019)',['#2D2A44','#121019']]];
 function computeFlags(prof,outfit){const out=[],items={};for(const k of ['dress','top','bottom','outer']){const it=outfit&&outfit[k];if(it&&P(it.pid))items[k]={...it,p:P(it.pid)}}if(items.dress){delete items.top;delete items.bottom}
@@ -1579,30 +1597,57 @@ const MAN_SVG=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400"><de
 const MAN_URL='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(MAN_SVG);
 const OVK={top:{x:20,y:13,w:60},outer:{x:18,y:12,w:64},dress:{x:16,y:13,w:68},bottom:{x:21,y:45,w:58}};
 const phP=()=>P(S.phPid)||PRODUCTS[0];
-function stageInner(mini){const p=phP(),src=S.garm?S.garm.url:thumbURL(p,S.phCi);
-let h=S.person?`<img class="person" src="${S.person.url}" alt="${S.person.sample?'Sample mannequin':'Your photo'}">`:`<div class="empty"><div><b>No photo yet</b><br>Upload a photo or use the sample mannequin.</div></div>`;
+const PH={key:'',r:null};
+function bgCanvas(c){const o=document.createElement('canvas');o.width=c.width;o.height=c.height;const x=o.getContext('2d'),g=x.createLinearGradient(0,0,0,o.height);g.addColorStop(0,'#F3EFE9');g.addColorStop(1,'#DFD8CE');x.fillStyle=g;x.fillRect(0,0,o.width,o.height);x.drawImage(c,0,0);return o}
+function phRender(){if(typeof A3==='undefined'||!A3||!A3.real||!A3.photo)return null;const p=phP(),size=recSize(p),key=JSON.stringify([S.prof,p.id,S.phCi,size]);if(PH.key===key)return PH.r;
+let r;try{r=A3.photo(S.prof,{pid:p.id,ci:S.phCi,size})}catch(e){console.warn('3D photo render failed',e);return null}
+if(r.texPending&&!PH.wait){PH.wait=1;MH.whenTex(()=>{PH.wait=0;PH.key='';if($('#v-photo').classList.contains('on'))renderPhoto()})}
+let garm=null,ov=null,gw=null;const b=r.box;if(b){const c=document.createElement('canvas');c.width=b.w;c.height=b.h;c.getContext('2d').drawImage(r.garm,b.x,b.y,b.w,b.h,0,0,b.w,b.h);garm=c.toDataURL('image/png');ov={x:b.x/r.W*100,y:b.y/r.H*100,w:b.w/r.W*100};
+const wc=document.createElement('canvas');wc.width=768;wc.height=1024;const wx=wc.getContext('2d');wx.fillStyle='#FFFFFF';wx.fillRect(0,0,768,1024);const k=Math.min(700/b.w,960/b.h);wx.drawImage(c,(768-b.w*k)/2,(1024-b.h*k)/2,b.w*k,b.h*k);gw=wc}
+PH.r={topF:r.topF,botF:r.botF,person:bgCanvas(r.person).toDataURL('image/jpeg',.9),full:r.full?bgCanvas(r.full).toDataURL('image/jpeg',.9):null,garm,ov,gw,size,name:p.name,col:(p.colors[S.phCi]||p.colors[0]).name};PH.key=key;return PH.r}
+/* find the person in a plain-background photo: pixels that differ from the border colour; returns the box in stage % (object-fit: cover, 3:4) */
+function personBox(url){return new Promise(res=>{const im=new Image();im.onload=()=>{try{const iw=im.naturalWidth,ih=im.naturalHeight,k=Math.min(1,220/Math.max(iw,ih)),w=Math.max(8,Math.round(iw*k)),h=Math.max(8,Math.round(ih*k));
+const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(im,0,0,w,h);const d=x.getImageData(0,0,w,h).data,px=(i,j)=>(j*w+i)*4;
+const bd=[];for(let i=0;i<w;i++){bd.push(px(i,0),px(i,h-1))}for(let j=0;j<h;j++){bd.push(px(0,j),px(w-1,j))}const med=ch=>{const a=bd.map(q=>d[q+ch]).sort((p,q)=>p-q);return a[a.length>>1]},bg=[med(0),med(1),med(2)];
+const on=(i,j)=>{const q=px(i,j);return Math.hypot(d[q]-bg[0],d[q+1]-bg[1],d[q+2]-bg[2])>46};let y0=-1,y1=-1,xs=0,xn=0;
+for(let j=0;j<h;j++){let n=0,sx=0;for(let i=0;i<w;i++)if(on(i,j)){n++;sx+=i}if(n>=Math.max(2,w*.025)){if(y0<0)y0=j;y1=j;xs+=sx;xn+=n}}
+if(y0<0||(y1-y0)<h*.35||(y0<=1&&y1>=h-2)){res(null);return}
+const ar=.75;let vx0=0,vy0=0,vw=w,vh=h;if(w/h>ar){vw=h*ar;vx0=(w-vw)/2}else{vh=w/ar;vy0=(h-vh)/2}
+res({y0:(y0-vy0)/vh*100,y1:(y1+1-vy0)/vh*100,xc:(xs/xn-vx0)/vw*100})}catch(e){res(null)}};im.onerror=()=>res(null);im.src=url})}
+const personURL=()=>!S.person?null:S.person.sample?((phRender()||{}).person||MAN_URL):S.person.url;
+const dataBlob=u=>fetch(u).then(r=>r.blob());
+function stageInner(mini){const p=phP(),r3=S.garm?null:phRender(),src=S.garm?S.garm.url:(r3&&r3.garm)||thumbURL(p,S.phCi);
+let h=S.person?`<img class="person" src="${personURL()}" alt="${S.person.sample?'Sample model: your 3D avatar':'Your photo'}">`:`<div class="empty"><div><b>No photo yet</b><br>Upload a photo or use the sample mannequin.</div></div>`;
 if(S.person)h+=`<img class="garm" ${mini?'':'id="garm"'} draggable="false" src="${src}" alt="${esc(S.garm?'Your garment':p.name)}" style="left:${S.ov.x}%;top:${S.ov.y}%;width:${S.ov.w}%;opacity:${S.op/100}">`;
-return h+`<span class="badge">Overlay preview, not AI-generated${S.person&&S.person.sample?' · sample mannequin':''}</span>`}
+return h+`<span class="badge">${r3&&r3.garm?`3D garment, size ${r3.size}`:'Overlay preview'} · not AI${S.person&&S.person.sample?' · sample: your avatar':''}</span>`}
 function renderStage(){$('#stage').innerHTML=stageInner(false);bindDrag();const cb=$('#compareBox');cb.hidden=!S.cmp;
-if(S.cmp)cb.innerHTML=`<div><p class="small muted" style="margin:0 0 4px">Before</p><div class="stage">${S.person?`<img class="person" src="${S.person.url}" alt="Original photo">`:''}</div></div><div><p class="small muted" style="margin:0 0 4px">${S.ai?(S.aiReal?'AI try-on':'Mock result, not AI'):'Overlay preview'}</p><div class="stage">${S.ai?`<img class="person" src="${S.ai}" alt="Try-on result">`:stageInner(true)}</div></div>`;
+if(S.cmp)cb.innerHTML=`<div><p class="small muted" style="margin:0 0 4px">Before</p><div class="stage">${S.person?`<img class="person" src="${personURL()}" alt="Original photo">`:''}</div></div><div><p class="small muted" style="margin:0 0 4px">${S.ai?(S.ai3d?'3D try-on of your avatar':S.aiReal?'AI try-on':'Mock result, not AI'):'Overlay preview'}</p><div class="stage">${S.ai?`<img class="person" src="${S.ai}" alt="Try-on result">`:stageInner(true)}</div></div>`;
 $('#ovScale').value=S.ov.w;$('#ovOp').value=S.op}
 function bindDrag(){const g=$('#garm'),st=$('#stage');if(!g)return;let sx,sy,ox,oy;
 g.onpointerdown=e=>{e.preventDefault();g.setPointerCapture(e.pointerId);sx=e.clientX;sy=e.clientY;ox=S.ov.x;oy=S.ov.y;g.classList.add('drag')};
 g.onpointermove=e=>{if(!g.classList.contains('drag'))return;const r=st.getBoundingClientRect();S.ov.x=clamp(ox+(e.clientX-sx)/r.width*100,-40,100);S.ov.y=clamp(oy+(e.clientY-sy)/r.height*100,-40,100);g.style.left=S.ov.x+'%';g.style.top=S.ov.y+'%'};
 g.onpointerup=g.onpointercancel=()=>g.classList.remove('drag')}
-function setPhoto(pid,ci){S.phPid=pid;S.phCi=ci||0;S.garm=null;S.ai=null;S.ov={...OVK[P(pid).kind]}}
+function setPhoto(pid,ci){S.phPid=pid;S.phCi=ci||0;S.garm=null;S.ai=null;S.ov={...OVK[P(pid).kind]};S.ovAuto=true}
+function autoOv(){const r3=S.garm?null:phRender();S.ov=r3&&r3.ov?{...r3.ov}:{...OVK[phP().kind]};const pb=S.person&&!S.person.sample&&S.person.box;if(r3&&r3.ov&&pb){const sc=(pb.y1-pb.y0)/((r3.botF-r3.topF)*100);S.ov={x:pb.xc+(r3.ov.x-50)*sc,y:pb.y0+(r3.ov.y-r3.topF*100)*sc,w:r3.ov.w*sc}}S.ovAuto=false;S.ovKey=r3?PH.key:''}
+if(typeof A3!=='undefined'&&A3&&A3.onReal)A3.onReal(()=>{PH.key='';if($('#v-photo').classList.contains('on')){S.ovAuto=true;renderPhoto()}});
 function renderPhoto(){if(!S.phPid){const it=S.sel||S.outfit.top||S.outfit.dress;setPhoto(it?it.pid:PRODUCTS[0].id,it?it.ci:0)}if(!S.person)S.person={url:MAN_URL,sample:true};
 const p=phP();$('#phProduct').innerHTML=['boy','girl'].map(g=>`<optgroup label="${g==='boy'?'Boys':'Girls'}">${gProducts(g).map(x=>`<option value="${x.id}"${x.id===p.id?' selected':''}>${esc(x.name)}</option>`).join('')}</optgroup>`).join('');
 $('#phColors').innerHTML=S.garm?'':`<span class="small muted">Colour:</span>`+p.colors.map((cc,i)=>`<button class="dot" data-act="phcol" data-i="${i}" aria-pressed="${i===S.phCi}" aria-label="${cc.name}" title="${cc.name}" style="background:${cc.hex}"></button>`).join('');
-$('#clearGarm').hidden=!S.garm;$('#delPhoto').disabled=!S.person||S.person.sample;$('#backendUrl').value=S.backend;$('#aiBtn').disabled=!S.backend.trim();renderStage()}
+$('#clearGarm').hidden=!S.garm;$('#delPhoto').disabled=!S.person||S.person.sample;$('#backendUrl').value=S.backend;if(S.ovAuto||(!S.garm&&phRender()&&PH.key!==S.ovKey))autoOv();phAiUi();renderStage();
+if(!S.bkProbe&&!S.backend.trim()&&/^https?:$/.test(location.protocol)){S.bkProbe=1;fetch(location.origin+'/api/health',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.ok&&!S.backend.trim()){S.backend=location.origin;S.bkMock=!!j.mock;KV.set('backend',S.backend);if($('#v-photo').classList.contains('on'))renderPhoto()}}).catch(()=>{})}}
+function phAiUi(){const has=!!S.backend.trim(),b=$('#aiBtn');b.disabled=false;b.textContent=has?'Generate AI try-on':'Generate 3D try-on';
+if(!$('#aiStatus').dataset.busy&&!S.ai)aiStatus('',has?`Backend set: ${S.backend.trim()}${S.bkMock?' (mock mode: results are not AI)':''}. Generate sends the photo and the garment to it.`:'No AI backend connected, so Generate makes a 3D try-on: your avatar wearing this garment in your size. For AI try-on on your own photo, run the FitMate backend and enter its URL.')}
+function run3D(){const r3=phRender();if(!r3||!r3.full){aiStatus('err','The 3D avatar is still loading; try again in a moment.');return}
+S.ai=r3.full;S.ai3d=true;S.aiReal=false;aiStatus('ok',`3D try-on ready: your avatar in ${r3.col} ${r3.name}, size ${r3.size} (your recommended size). This is a 3D render, not AI.`);
+$('#aiRes').hidden=false;$('#aiRes').innerHTML=`<img src="${S.ai}" alt="3D try-on of your avatar" style="width:100%;border-radius:14px">`;renderStage()}
 /* AI backend */
 function svgToBlob(svg,w,h){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>{const cv=document.createElement('canvas');cv.width=w;cv.height=h;const x=cv.getContext('2d');x.fillStyle='#FFFFFF';x.fillRect(0,0,w,h);const sc=Math.min(w/im.width,h/im.height)*.9;x.drawImage(im,(w-im.width*sc)/2,(h-im.height*sc)/2,im.width*sc,im.height*sc);cv.toBlob(b=>b?res(b):rej(new Error('Could not render image')),'image/png')};im.onerror=()=>rej(new Error('Could not render image'));im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)})}
 const fixSize=svg=>svg.replace('<svg ','<svg width="768" height="1024" ');
 function aiStatus(cls,msg){const s=$('#aiStatus');s.className='status'+(cls?' '+cls:'');s.textContent=msg}
-async function runAI(){const base=S.backend.trim().replace(/\/+$/,'');if(!base)return;if(!S.person){aiStatus('err','Add a photo first.');return}
+async function runAI(){const base=S.backend.trim().replace(/\/+$/,'');if(!base){run3D();return}S.ai3d=false;if(!S.person){aiStatus('err','Add a photo first.');return}
 const btn=$('#aiBtn');btn.disabled=true;aiStatus('','Preparing images…');
-try{const p=phP(),fd=new FormData();fd.append('person',S.person.file||await svgToBlob(fixSize(MAN_SVG),768,1024),'person.png');
-fd.append('garment',S.garm&&S.garm.file?S.garm.file:await svgToBlob(fixSize(thumb(p,S.phCi)),768,1024),'garment.png');
+try{const p=phP(),r3=phRender(),fd=new FormData();fd.append('person',S.person.file||(r3?await dataBlob(r3.person):await svgToBlob(fixSize(MAN_SVG),768,1024)),'person.png');
+fd.append('garment',S.garm&&S.garm.file?S.garm.file:(r3&&r3.gw?await new Promise(res=>r3.gw.toBlob(res,'image/png')):await svgToBlob(fixSize(thumb(p,S.phCi)),768,1024)),'garment.png');
 fd.append('description',S.garm?'garment':`${p.colors[S.phCi].name} ${p.name}`.toLowerCase());fd.append('category',p.kind==='bottom'?'lower_body':p.kind==='dress'?'dresses':'upper_body');
 aiStatus('','Uploading to backend…');const r=await fetch(base+'/api/tryon',{method:'POST',body:fd});if(!r.ok)throw new Error('Backend replied '+r.status+': '+(await r.text()).slice(0,160));
 const j=await r.json();S.job=j.job_id;const t0=Date.now();
@@ -1611,7 +1656,7 @@ if(s.status==='done'){S.ai=s.result_data_url;S.aiReal=s.is_ai!==false;const sec=
 if(s.status==='error')throw new Error(s.error||'The model failed');aiStatus('',(s.message||'Generating')+'… '+Math.round((Date.now()-t0)/1000)+' s')}
 throw new Error('Timed out after 5 minutes. The GPU Space may be busy; try again.')}
 catch(e){aiStatus('err',e instanceof TypeError?`Couldn’t reach ${base}. Check the backend is running and allows this page (CORS). The hosted demo page can’t call outside servers; open frontend/index.html locally.`:e.message)}
-btn.disabled=!S.backend.trim()}
+btn.disabled=false}
 /* =================== REPORT =================== */
 function renderReport(){const sel=$('#repProduct');const pid=S.repPid||(S.sel&&S.sel.pid)||(S.outfit.top||S.outfit.dress).pid;S.repPid=pid;
 sel.innerHTML=['boy','girl'].map(g=>`<optgroup label="${g==='boy'?'Boys':'Girls'}">${gProducts(g).map(x=>`<option value="${x.id}"${x.id===pid?' selected':''}>${esc(x.name)}</option>`).join('')}</optgroup>`).join('');
@@ -1741,13 +1786,13 @@ function renderProject(){$('#projStatus').innerHTML=featHTML();
 $('#ruleTable').innerHTML=`<tr><th>Garment · measurement</th><th>Weight</th><th>Slim</th><th>Regular</th><th>Relaxed</th></tr>`+Object.keys(RANGE).flatMap(k=>Object.keys(RANGE[k]).map(m=>`<tr><td>${{top:'Tops',outer:'Jackets',dress:'Dresses',bottom:'Bottoms'}[k]} · ${LBL[m]}</td><td>${WT[k][m]}</td>${['slim','regular','relaxed'].map(f=>`<td>${RANGE[k][m][f].join(' to ')}</td>`).join('')}</tr>`)).join('')}
 /* =================== EVENTS =================== */
 function openConsent(file){S.pending=file;$('#consentChk').checked=false;$('#consentOk').disabled=true;$('#consent').classList.add('on');$('#consentChk').focus()}
-function usePhoto(f){if(S.person&&!S.person.sample)URL.revokeObjectURL(S.person.url);S.person={url:URL.createObjectURL(f),file:f,sample:false};S.ai=null;$('#aiRes').hidden=true;renderPhoto();toast('Photo added. It stays in this browser.')}
+function usePhoto(f){if(S.person&&!S.person.sample)URL.revokeObjectURL(S.person.url);const pp={url:URL.createObjectURL(f),file:f,sample:false};S.person=pp;S.ai=null;$('#aiRes').hidden=true;S.ovAuto=true;renderPhoto();personBox(pp.url).then(b=>{if(S.person!==pp)return;pp.box=b;S.ovAuto=true;renderPhoto();toast(b?'Photo added. The garment is placed on the person; drag or resize to fine-tune.':'Photo added. Drag the garment and use Size to line it up.')})}
 $('#personFile').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(!/^image\//.test(f.type)){toast('Please choose an image file');return}if(f.size>15e6){toast('Image is over 15 MB');return}S.consent?usePhoto(f):openConsent(f)});
 $('#garmFile').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(!f||!/^image\//.test(f.type))return;S.garm={url:URL.createObjectURL(f),file:f};S.ai=null;renderPhoto();toast('Tip: a cut-out PNG overlays best')});
 $('#consentChk').addEventListener('change',e=>$('#consentOk').disabled=!e.target.checked);
 $('#ovScale').addEventListener('input',e=>{const w=+e.target.value;S.ov.x+=(S.ov.w-w)/2;S.ov.y+=(S.ov.w-w)/2*.75;S.ov.w=w;const g=$('#garm');if(g){g.style.width=w+'%';g.style.left=S.ov.x+'%';g.style.top=S.ov.y+'%'}});
 $('#ovOp').addEventListener('input',e=>{S.op=+e.target.value;const g=$('#garm');if(g)g.style.opacity=S.op/100});
-$('#backendUrl').addEventListener('input',e=>{S.backend=e.target.value;KV.set('backend',S.backend);$('#aiBtn').disabled=!S.backend.trim()});
+$('#backendUrl').addEventListener('input',e=>{S.backend=e.target.value;S.bkMock=false;KV.set('backend',S.backend);phAiUi()});
 $('#phProduct').addEventListener('change',e=>{setPhoto(e.target.value,0);renderPhoto()});
 $('#avMeasures').addEventListener('input',e=>{const t=e.target,k=t.id.slice(2);if(!MEAS.some(m=>m[0]===k))return;if(t.type==='range'){$('#m-'+k).value=t.value}else if(+t.value>0){$('#r-'+k).value=t.value}setMeasure(k,t.value);$('#avNearest').textContent='Closest standard sizes: '+nearestStd();renderAvatarStage(true)});
 $('#avName').addEventListener('input',e=>{S.prof.name=e.target.value.slice(0,24);saveState()});
@@ -1787,10 +1832,10 @@ else if(a==='photoSel'){setPhoto(S.sel.pid,S.sel.ci);location.hash='photo'}
 else if(a==='repToW'){const p=P(S.repPid);wear(p.id,0,null);S.wf.g=p.gender}
 else if(a==='copyRep'){navigator.clipboard.writeText(reportText()).then(()=>toast('Report copied'),()=>toast('Copy blocked by the browser'))}
 else if(a==='phcol'){S.phCi=+t.dataset.i;S.ai=null;renderPhoto()}
-else if(a==='sample'){if(S.person&&!S.person.sample)URL.revokeObjectURL(S.person.url);S.person={url:MAN_URL,sample:true};S.ai=null;renderPhoto()}
+else if(a==='sample'){if(S.person&&!S.person.sample)URL.revokeObjectURL(S.person.url);S.person={url:MAN_URL,sample:true};S.ai=null;S.ovAuto=true;renderPhoto()}
 else if(a==='delPhoto'){if(S.person&&!S.person.sample)URL.revokeObjectURL(S.person.url);const base=S.backend.trim().replace(/\/+$/,'');if(base&&S.job)fetch(base+'/api/tryon/'+S.job,{method:'DELETE'}).catch(()=>{});S.person=null;S.ai=null;S.job=null;$('#aiRes').hidden=true;$('#aiRes').innerHTML='';renderPhoto();toast('Photo deleted from this page')}
 else if(a==='clearGarm'){if(S.garm)URL.revokeObjectURL(S.garm.url);S.garm=null;renderPhoto()}
-else if(a==='resetPos'){S.ov={...OVK[phP().kind]};renderStage()}
+else if(a==='resetPos'){autoOv();renderStage()}
 else if(a==='compare'){S.cmp=!S.cmp;t.textContent=S.cmp?'Hide comparison':'Compare before / after';renderStage()}
 else if(a==='runAI')runAI();
 else if(a==='consentOk'){S.consent=true;$('#consent').classList.remove('on');if(S.pending)usePhoto(S.pending);S.pending=null}
