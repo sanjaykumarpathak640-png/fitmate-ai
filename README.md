@@ -3,6 +3,7 @@
 ## Live links
 
 - Live prototype (GitHub Pages): https://sanjaykumarpathak640-png.github.io/fitmate-ai/
+- Demo video: https://youtu.be/Y55rXvkDWI0
 - Source code: https://github.com/sanjaykumarpathak640-png/fitmate-ai
 - Team CodeCodders · PRASUNEX Innovathon 2026, Round 3
 
